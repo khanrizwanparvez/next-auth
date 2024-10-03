@@ -24,20 +24,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = credentials.password as string | undefined;
 
         if (!email || !password)
-          throw new CredentialsSignin("Please provide both email and password");
+          throw new CredentialsSignin({
+            cause: "Please provide both email and password",
+          });
 
         // Connect to Database
 
         const user = await User.findOne({ email }).select("+password");
 
-        if (!user) throw new CredentialsSignin("Invalid email or password");
+        if (!user)
+          throw new CredentialsSignin({ cause: "Invalid email or password" });
 
         if (!user.password)
-          throw new CredentialsSignin("Invalid email or password");
+          throw new CredentialsSignin({ cause: "Invalid email or password" });
 
         const isPasswordMatched = await compare(password, user.password);
 
-        if (!isPasswordMatched) throw new CredentialsSignin("Invalid Password");
+        if (!isPasswordMatched)
+          throw new CredentialsSignin({
+            cause: "Invalid Email or Password",
+          });
 
         return { name: user.name, email: user.email, id: user._id };
       },
