@@ -1,6 +1,9 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import CredentialProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { compare } from "bcryptjs";
+
+import { User } from "./models/userModel";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -16,21 +19,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           type: "password",
         },
       },
-      authorize: ({ email, password }) => {
-        console.log(email, password);
+      authorize: async (credentials) => {
+        const email = credentials.email as string | undefined;
+        const password = credentials.password as string | undefined;
 
-        if (typeof email !== "string")
-          throw new CredentialsSignin({
-            cause: "Email is not valid",
-          });
+        if (!email || !password)
+          throw new CredentialsSignin("Please provide both email and password");
 
-        const user = { email, id: "dfd" };
+        // Connect to Database
 
-        if (password !== "passcode")
-          throw new CredentialsSignin({
-            cause: "Password does not match",
-          });
-        else return user;
+        const user = await User.findOne({ email }).select("+password");
+
+        if (!user) throw new CredentialsSignin("Invalid email or password");
+
+        if (!user.password)
+          throw new CredentialsSignin("Invalid email or password");
+
+        const isPasswordMatched = await compare(password, user.password);
+
+        if (!isPasswordMatched) throw new CredentialsSignin("Invalid Password");
+
+        return { name: user.name, email: user.email, id: user._id };
       },
     }),
 
